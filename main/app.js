@@ -5,9 +5,9 @@ const Sequelize = require('sequelize')
 const mysql = require('mysql2/promise')
 
 // TODO: change the credentials to fit your own
-// if user does not have the right to create, run (as root): GRANT ALL PRIVILEGES ON *.* TO 'app'@'localhost';
-const DB_USERNAME = 'app1'
-const DB_PASSWORD = 'welcome123'
+// if user does not have the right to create, run (as root): GRANT ALL PRIVILEGES ON . TO 'app'@'localhost';
+const DB_USERNAME = 'root'
+const DB_PASSWORD = 'uvarguz2190'
 
 let conn
 
@@ -48,7 +48,8 @@ let FoodItem = sequelize.define('foodItem', {
 
 const app = express()
 // TODO
-
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 app.get('/create', async (req, res) => {
     try{
         await sequelize.sync({force : true})
@@ -81,10 +82,36 @@ app.get('/food-items', async (req, res) => {
 
 app.post('/food-items', async (req, res) => {
     try{
-        // TODO
+        if (Object.keys(req.body).length === 0) {
+            throw 'no-body'
+        } else {
+            const {name, category, calories} = req.body;
+            if (name && category && calories) {
+                if (calories < 0)
+                    throw 'negative-calories';
+                let foodItem = new FoodItem({
+                    name,
+                    category,
+                    calories
+                });
+                await foodItem.save();
+                return res.status(201).json({message : 'created'});
+            } else {
+                throw 'malformed-request'
+            }
+        }
     }
     catch(err){
-        // TODO
+        switch (err) {
+            case 'no-body':
+                return res.status(400).json({message : 'body is missing'});
+            case 'malformed-request':
+                return res.status(400).json({message : 'malformed request'});
+            case 'negative-calories':
+                return res.status(400).json({message : 'calories should be a positive number'});
+        }
+        if (err.errors[0].path === 'category' && err.errors[0].validatorKey === 'len')
+            return res.status(400).json({message: 'not a valid category'});
     }
 })
 
